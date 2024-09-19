@@ -15,7 +15,10 @@ let write_cfg_edge_fact out_channel func_name src dst =
 
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t) (cfgs : unit Cfg.t Int32Map.t) =
-  let out_channel = Out_channel.create "module.facts" in
+  (* Open channels for separate fact files *)
+  let instruction_out_channel = Out_channel.create "module-instructions.facts" in
+  let cfg_edge_out_channel = Out_channel.create "module-cfg_edges.facts" in
+  let func_edge_out_channel = Out_channel.create "module-func_edges.facts" in
 
   (* Iterate over functions and CFGs *)
   Int32Map.iteri cfgs ~f:(fun ~key:fid ~data:cfg ->
@@ -27,9 +30,9 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t) (cfgs : unit Cfg.t Int
         match edge_data with
         | Some _ -> (* Handle function calls here *)
           let called_func_name = Printf.sprintf "func_%d" dst in
-          write_func_edge_fact out_channel func_name called_func_name
+          write_func_edge_fact func_edge_out_channel func_name called_func_name
         | None -> (* Handle normal intra-function control flow *)
-          write_cfg_edge_fact out_channel func_name src dst
+          write_cfg_edge_fact cfg_edge_out_channel func_name src dst
       )
     );
 
@@ -42,16 +45,18 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t) (cfgs : unit Cfg.t Int
         List.iteri instrs ~f:(fun instr_id instr_labelled ->
           let instr_name = Printf.sprintf "instr_%d" instr_id in
           let instr_str = Instr.to_mnemonic (Instr.Data instr_labelled) in
-          write_instr_fact out_channel func_name bb_name instr_name instr_str
+          write_instr_fact instruction_out_channel func_name bb_name instr_name instr_str
         )
       | Control instr ->
         let instr_name = "control_instr" in
         let instr_str = Instr.control_to_short_string instr.instr in
-        write_instr_fact out_channel func_name bb_name instr_name instr_str
+        write_instr_fact instruction_out_channel func_name bb_name instr_name instr_str
     )
   );
 
-  Out_channel.close out_channel
+  Out_channel.close instruction_out_channel;
+  Out_channel.close cfg_edge_out_channel;
+  Out_channel.close func_edge_out_channel
 
 (* Define the command for generating Datalog facts *)
 let facts =
@@ -67,6 +72,6 @@ let facts =
        (* Generate the Datalog facts *)
        generate_datalog_facts wasm_module cfgs;
        let end_time = Time_float.now () in
-       Printf.printf "Datalog facts written to 'module.facts'.\n";
+       Printf.printf "Datalog facts written to '.'.\n";
        Printf.printf "Time_float for 'Datalog facts generation': %s\n%!"
          (Time_float.Span.to_string (Time_float.diff end_time start_time)))
