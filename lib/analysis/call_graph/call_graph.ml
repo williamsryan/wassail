@@ -63,6 +63,8 @@ let make (wasm_mod : Wasm_module.t) : t =
   let rec collect_calls (f : Int32.t) (instr : 'a Instr.t) (edges : EdgeSet.t Int32Map.t) : EdgeSet.t Int32Map.t = match instr with
     | Control { instr = Call (_, _, f'); _ } ->
       let edge : Edge.t = { target = f'; direct = true } in
+      (* Emit CFG facts *)
+      (* Printf.printf "cfg_edge(\"func_%ld\", \"func_%ld\", direct).\n" f f'; *)
       Int32Map.update edges f ~f:(function
           | None -> EdgeSet.singleton edge
           | Some fs -> EdgeSet.add fs edge)
