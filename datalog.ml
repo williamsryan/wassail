@@ -3,22 +3,22 @@ open Wassail
 
 (* Helper to write function call edge facts *)
 let write_func_edge_fact out_channel src_func dst_func =
-  Out_channel.output_string out_channel (Printf.sprintf "func_edge(\"%s\", \"%s\").\n" src_func dst_func)
+  Out_channel.output_string out_channel (Printf.sprintf "\"%s\"\t\"%s\"\n" src_func dst_func)
 
 (* Helper to write instruction facts *)
 let write_instr_fact out_channel func_name bb_name instr_name instr_str =
-  Out_channel.output_string out_channel (Printf.sprintf "instruction(\"%s\", \"%s\", \"%s\", \"%s\").\n" func_name bb_name instr_name instr_str)
+  Out_channel.output_string out_channel (Printf.sprintf "\"%s\"\t\"%s\"\t\"%s\"\t\"%s\"\n" func_name bb_name instr_name instr_str)
 
 (* Helper to write CFG edge facts *)
 let write_cfg_edge_fact out_channel func_name src dst =
-  Out_channel.output_string out_channel (Printf.sprintf "cfg_edge(\"%s\", \"bb_%d\", \"bb_%d\").\n" func_name src dst)
+  Out_channel.output_string out_channel (Printf.sprintf "\"%s\"\t\"bb_%d\"\t\"bb_%d\"\n" func_name src dst)
 
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t) (cfgs : unit Cfg.t Int32Map.t) =
   (* Open channels for separate fact files *)
-  let instruction_out_channel = Out_channel.create "module-instructions.facts" in
-  let cfg_edge_out_channel = Out_channel.create "module-cfg_edges.facts" in
-  let func_edge_out_channel = Out_channel.create "module-func_edges.facts" in
+  let instruction_out_channel = Out_channel.create "instruction.facts" in
+  let cfg_edge_out_channel = Out_channel.create "cfg_edge.facts" in
+  let func_edge_out_channel = Out_channel.create "func_edge.facts" in
 
   (* Iterate over functions and CFGs *)
   Int32Map.iteri cfgs ~f:(fun ~key:fid ~data:cfg ->
