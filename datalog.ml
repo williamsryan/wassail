@@ -59,13 +59,13 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                   write_cfg_edge_fact cfg_edge_out_channel func_name src dst
                     "call"
               | None ->
-                  (* No edge data; default to unconditional *)
+                  (* Write CFG edge without annotation *)
                   write_cfg_edge_fact cfg_edge_out_channel func_name src dst
-                    "unconditional"));
+                    ""));
 
       (* Iterate over basic blocks and their content *)
-      IntMap.iteri cfg.basic_blocks ~f:(fun ~key:bb_idx ~data:bb ->
-          let bb_name = Printf.sprintf "bb_%d" bb_idx in
+      IntMap.iteri cfg.basic_blocks ~f:(fun ~key:bb_id ~data:bb ->
+          let bb_name = Printf.sprintf "bb_%d" bb_id in
           (* Check if the block is Data or Control and iterate over instructions *)
           match bb.content with
           | Data instrs ->
