@@ -3,18 +3,33 @@ open Wasm
 
 module T = struct
   (** Relational operation *)
-  type op = Eq | Ne | LtS | LtU | GtS | GtU | LeS | LeU | GeS | GeU | Lt | Gt | Le | Ge
+  type op =
+    | Eq
+    | Ne
+    | LtS
+    | LtU
+    | GtS
+    | GtU
+    | LeS
+    | LeU
+    | GeS
+    | GeU
+    | Lt
+    | Gt
+    | Le
+    | Ge
   [@@deriving sexp, compare, equal]
-  type t = { op: op; typ: Type.t }
-  [@@deriving sexp, compare, equal]
+
+  type t = { op : op; typ : Type.t } [@@deriving sexp, compare, equal]
 end
+
 include T
 
-exception UnsupportedRelOp of t
-[@@deriving sexp]
+exception UnsupportedRelOp of t [@@deriving sexp]
 
 let of_wasm (r : Ast.relop) : t =
-  let of_op (op : Wasm.Ast.IntOp.relop) : op = match op with
+  let of_op (op : Wasm.Ast.IntOp.relop) : op =
+    match op with
     | Eq -> Eq
     | Ne -> Ne
     | LtS -> LtS
@@ -26,7 +41,8 @@ let of_wasm (r : Ast.relop) : t =
     | GeS -> GeS
     | GeU -> GeU
   in
-  let of_op_f (op : Wasm.Ast.FloatOp.relop) : op = match op with
+  let of_op_f (op : Wasm.Ast.FloatOp.relop) : op =
+    match op with
     | Eq -> Eq
     | Ne -> Ne
     | Lt -> Lt
@@ -41,22 +57,21 @@ let of_wasm (r : Ast.relop) : t =
   | F64 op -> { typ = F64; op = of_op_f op }
 
 let to_mnemonic (r : t) : string =
-  Printf.sprintf "%s.%s"
-    (Type.to_string r.typ)
+  Printf.sprintf "%s.%s" (Type.to_string r.typ)
     (match r.op with
-     | Eq -> "eq"
-     | Ne -> "ne"
-     | Lt -> "lt"
-     | LtS -> "lt_s"
-     | LtU -> "lt_u"
-     | Gt -> "gt"
-     | GtS -> "gt_s"
-     | GtU -> "gt_u"
-     | Le -> "le"
-     | LeS -> "le_s"
-     | LeU -> "le_u"
-     | Ge -> "ge"
-     | GeS -> "ge_s"
-     | GeU -> "ge_u")
+    | Eq -> "eq"
+    | Ne -> "ne"
+    | Lt -> "lt"
+    | LtS -> "lt_s"
+    | LtU -> "lt_u"
+    | Gt -> "gt"
+    | GtS -> "gt_s"
+    | GtU -> "gt_u"
+    | Le -> "le"
+    | LeS -> "le_s"
+    | LeU -> "le_u"
+    | Ge -> "ge"
+    | GeS -> "ge_s"
+    | GeU -> "ge_u")
 
-let  to_string (r : t) : string = to_mnemonic r
+let to_string (r : t) : string = to_mnemonic r

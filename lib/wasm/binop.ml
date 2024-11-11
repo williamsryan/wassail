@@ -2,18 +2,39 @@ open Core
 
 (** Binary operations *)
 module T = struct
-  type op = Add | Sub | Mul | Div | DivS | DivU | RemS | RemU | And | Or | Xor | Shl | ShrS | ShrU | Rotl | Rotr | Min | Max | CopySign
+  type op =
+    | Add
+    | Sub
+    | Mul
+    | Div
+    | DivS
+    | DivU
+    | RemS
+    | RemU
+    | And
+    | Or
+    | Xor
+    | Shl
+    | ShrS
+    | ShrU
+    | Rotl
+    | Rotr
+    | Min
+    | Max
+    | CopySign
   [@@deriving sexp, compare, equal]
-  type t = { op: op; typ: Type.t }
-  [@@deriving sexp, compare, equal]
+
+  type t = { op : op; typ : Type.t } [@@deriving sexp, compare, equal]
 end
+
 include T
 
 exception UnsupportedBinOp of t
 
 (** Convert a wasm binop to an internal binop *)
 let of_wasm (b : Wasm.Ast.binop) : t =
-  let of_op (op : Wasm.Ast.IntOp.binop) : op = match op with
+  let of_op (op : Wasm.Ast.IntOp.binop) : op =
+    match op with
     | Add -> Add
     | Sub -> Sub
     | Mul -> Mul
@@ -30,7 +51,8 @@ let of_wasm (b : Wasm.Ast.binop) : t =
     | Rotl -> Rotl
     | Rotr -> Rotr
   in
-  let of_op_f (op : Wasm.Ast.FloatOp.binop) : op = match op with
+  let of_op_f (op : Wasm.Ast.FloatOp.binop) : op =
+    match op with
     | Add -> Add
     | Sub -> Sub
     | Mul -> Mul
@@ -46,27 +68,26 @@ let of_wasm (b : Wasm.Ast.binop) : t =
   | F64 op -> { typ = F64; op = of_op_f op }
 
 let to_mnemonic (b : t) : string =
-  Printf.sprintf "%s.%s"
-    (Type.to_string b.typ)
+  Printf.sprintf "%s.%s" (Type.to_string b.typ)
     (match b.op with
-     | Add -> "add"
-     | Sub -> "sub"
-     | Mul -> "mul"
-     | Div -> "div"
-     | DivS -> "div_s"
-     | DivU -> "div_u"
-     | RemS -> "rem_s"
-     | RemU -> "rem_u"
-     | And -> "and"
-     | Or -> "or"
-     | Xor -> "xor"
-     | Shl -> "shl"
-     | ShrS -> "shr_s"
-     | ShrU -> "shr_u"
-     | Rotl -> "rotl"
-     | Rotr -> "rotr"
-     | Min -> "min"
-     | Max -> "max"
-     | CopySign -> "copysign")
+    | Add -> "add"
+    | Sub -> "sub"
+    | Mul -> "mul"
+    | Div -> "div"
+    | DivS -> "div_s"
+    | DivU -> "div_u"
+    | RemS -> "rem_s"
+    | RemU -> "rem_u"
+    | And -> "and"
+    | Or -> "or"
+    | Xor -> "xor"
+    | Shl -> "shl"
+    | ShrS -> "shr_s"
+    | ShrU -> "shr_u"
+    | Rotl -> "rotl"
+    | Rotr -> "rotr"
+    | Min -> "min"
+    | Max -> "max"
+    | CopySign -> "copysign")
 
 let to_string (b : t) : string = to_mnemonic b

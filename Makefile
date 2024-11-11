@@ -20,6 +20,9 @@ coverage:
 	bisect-ppx-report html
 	echo 'Coverage produced in _coverage/index.html'
 
+fmt:
+	dune build @fmt --auto-promote
+
 js:
 	opam exec -- dune build jsbridge.bc.js
 	cp _build/default/jsbridge.bc.js ./js
