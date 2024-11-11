@@ -63,6 +63,10 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
       (* Iterate over basic blocks and their content *)
       IntMap.iteri cfg.basic_blocks ~f:(fun ~key:bb_id ~data:bb ->
           let bb_name = Printf.sprintf "bb_%d" bb_id in
+          (* Print the string representation of the whole block *)
+          let bb_str = Basic_block.to_string bb in
+          Printf.printf "Basic Block: %s\n" bb_str;
+
           (* Check if the block is Data or Control and iterate over instructions *)
           match bb.content with
           | Data instrs ->
