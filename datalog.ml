@@ -4,33 +4,31 @@ open Wassail
 (* Helper to write function call edge facts *)
 let write_func_edge_fact out_channel src_func dst_func =
   Out_channel.output_string out_channel
-    (Printf.sprintf "\"%s\"\t\"%s\"\n" src_func dst_func)
+    (Printf.sprintf "%s\t%s\n" src_func dst_func)
 
 (* Helper to write instruction facts *)
 let write_instr_fact out_channel func_name bb_name instr_name instr_str =
   Out_channel.output_string out_channel
-    (Printf.sprintf "\"%s\"\t\"%s\"\t\"%s\"\t\"%s\"\n" func_name bb_name
-       instr_name instr_str)
+    (Printf.sprintf "%s\t%s\t%s\t%s\n" func_name bb_name instr_name instr_str)
 
 (* Helper to write CFG edge facts *)
 let write_cfg_edge_fact out_channel func_name src dst annotation =
   Out_channel.output_string out_channel
-    (Printf.sprintf "\"%s\"\t\"bb_%d\"\t\"bb_%d\"\t\"%s\"\n" func_name src dst
-       annotation)
+    (Printf.sprintf "%s\tbb_%d\tbb_%d\t%s\n" func_name src dst annotation)
 
 (* Helper to write variable def-use facts *)
 let write_var_def_use_fact out_channel use_or_def func_name bb_name instr_index
     var_index =
   Out_channel.output_string out_channel
-    (Printf.sprintf "\"%s\"\t\"%s\"\t\"%s\"\t\"%d\"\t\"%ld\"\n" use_or_def
-       func_name bb_name instr_index var_index)
+    (Printf.sprintf "%s\t%s\t%s\t%d\t%ld\n" use_or_def func_name bb_name
+       instr_index var_index)
 
 (* Helper to write memory access facts *)
 let write_memory_access_fact out_channel kind func_name bb_name instr_name
     memop_str =
   Out_channel.output_string out_channel
-    (Printf.sprintf "%s\t\"%s\"\t\"%s\"\t\"%s\"\t\"%s\"\n" kind func_name
-       bb_name instr_name memop_str)
+    (Printf.sprintf "%s\t%s\t%s\t%s\t%s\n" kind func_name bb_name instr_name
+       memop_str)
 
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t)
@@ -60,8 +58,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                     "call"
               | None ->
                   (* Write CFG edge without annotation *)
-                  write_cfg_edge_fact cfg_edge_out_channel func_name src dst
-                    ""));
+                  write_cfg_edge_fact cfg_edge_out_channel func_name src dst ""));
 
       (* Iterate over basic blocks and their content *)
       IntMap.iteri cfg.basic_blocks ~f:(fun ~key:bb_id ~data:bb ->
