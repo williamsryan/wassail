@@ -10,6 +10,7 @@ test: bin
 
 clean:
 	opam exec -- dune clean
+	rm -f *.facts
 
 install:
 	opam exec -- dune build @install
