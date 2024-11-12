@@ -52,12 +52,18 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   let var_def_use_out_channel = Out_channel.create "var_def_use.facts" in
   let memory_access_out_channel = Out_channel.create "memory_access.facts" in
 
+  (* Track the last two relevant instructions for Store operations *)
+  let stack = ref [] in
+
+  (* Helper to print the current stack for debugging *)
+  let print_stack () =
+    Printf.printf "Current stack (top to bottom): %s\n"
+      (String.concat ~sep:", " (List.map !stack ~f:Int32.to_string))
+  in
+
   (* Iterate over functions and CFGs *)
   Int32Map.iteri cfgs ~f:(fun ~key:fid ~data:cfg ->
       let func_name = Printf.sprintf "func_%ld" fid in
-
-      (* Track potential base address for each memory access *)
-      let base_address = ref None in
 
       (* Generate function call facts *)
       IntMap.iteri cfg.edges ~f:(fun ~key:src ~data:edges ->
@@ -78,9 +84,10 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
       (* Iterate over basic blocks and their content *)
       IntMap.iteri cfg.basic_blocks ~f:(fun ~key:bb_id ~data:bb ->
           let bb_name = Printf.sprintf "bb_%d" bb_id in
+
           (* Print the string representation of the whole block *)
-          let bb_str = Basic_block.to_string bb in
-          Printf.printf "Basic Block: %s\n" bb_str;
+          (* let bb_str = Basic_block.to_string bb in *)
+          (* Printf.printf "Basic Block: %s\n" bb_str; *)
 
           (* Check if the block is Data or Control and iterate over instructions *)
           match bb.content with
@@ -95,35 +102,23 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
 
                   let instr = instr_labelled.instr in
 
-                  (* Generate def-use facts based on instruction type *)
+                  (* Handle stack updates for i32.const instructions *)
                   (match instr with
-                  | Const value -> (
-                      (* Only set base address if it is an i32, otherwise ignore *)
-                      match value with
-                      | I32 x ->
-                          Printf.printf "Setting base address from Const: %ld\n"
-                            x;
-                          base_address := Some x
-                      | _ -> base_address := None)
-                  | LocalGet idx ->
-                      Printf.printf "Setting base address from LocalGet: %ld\n"
-                        idx;
-                      (* Set base address from LocalGet for subsequent memory instruction *)
-                      base_address := Some idx;
-                      (* Use fact for Local_get *)
-                      write_var_def_use_fact var_def_use_out_channel "use"
-                        func_name bb_name instr_index idx
-                  | LocalSet idx | LocalTee idx ->
-                      (* Def fact for Local_set and Local_tee *)
-                      write_var_def_use_fact var_def_use_out_channel "def"
-                        func_name bb_name instr_index idx
+                  | Const (I32 x) ->
+                      Printf.printf "Pushing to stack: %ld\n" x;
+                      stack := x :: !stack;
+                      print_stack ()
                   | _ -> ());
 
                   (* Generate memory access facts based on instruction type *)
                   match instr with
                   | Load memop -> (
-                      match !base_address with
-                      | Some base ->
+                      Printf.printf
+                        "\n--- Load Instruction Encountered (%s) ---\n"
+                        (Instr.data_to_string instr);
+                      print_stack ();
+                      match !stack with
+                      | base :: _ ->
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
@@ -137,12 +132,18 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                           write_memory_access_fact memory_access_out_channel
                             "load" func_name bb_name instr_name memop_str
                             effective_offset;
-                          base_address := None
-                      | None -> ())
+                          (* Pop the address from the stack after use *)
+                          stack := List.tl_exn !stack
+                      | _ ->
+                          Printf.printf
+                            "No base address set for Load instruction.\n")
                   | Store memop -> (
-                      (* Store memory access fact *)
-                      match !base_address with
-                      | Some base ->
+                      Printf.printf
+                        "\n--- Store Instruction Encountered (%s) ---\n"
+                        (Instr.data_to_string instr);
+                      print_stack ();
+                      match !stack with
+                      | base :: value :: _ ->
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
@@ -150,14 +151,19 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                           Printf.printf
                             "Store instruction:\n\
                             \  Base address: %ld\n\
+                            \  Value: %ld\n\
                             \  Memop offset: %d\n\
                             \  Effective offset: %ld\n"
-                            base memop.offset effective_offset;
+                            base value memop.offset effective_offset;
                           write_memory_access_fact memory_access_out_channel
                             "store" func_name bb_name instr_name memop_str
                             effective_offset;
-                          base_address := None
-                      | None -> ())
+                          (* Pop the value and address from the stack after use *)
+                          stack := List.drop !stack 2
+                      | _ ->
+                          Printf.printf
+                            "Insufficient values on stack for Store instruction.\n"
+                      )
                   | _ -> ())
           | Control instr ->
               let instr_name = "control_instr" in
