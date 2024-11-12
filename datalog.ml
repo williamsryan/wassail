@@ -16,13 +16,6 @@ let write_cfg_edge_fact out_channel func_name src dst annotation =
   Out_channel.output_string out_channel
     (Printf.sprintf "%s\tbb_%d\tbb_%d\t%s\n" func_name src dst annotation)
 
-(* Helper to write variable def-use facts *)
-let write_var_def_use_fact out_channel use_or_def func_name bb_name instr_index
-    offset =
-  Out_channel.output_string out_channel
-    (Printf.sprintf "%s\t%s\t%s\t%d\t%ld\n" use_or_def func_name bb_name
-       instr_index offset)
-
 (* Helper to write memory access facts *)
 let write_memory_access_fact out_channel kind func_name bb_name instr_name
     memop_str effective_offset =
@@ -49,7 +42,6 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   let instruction_out_channel = Out_channel.create "instruction.facts" in
   let cfg_edge_out_channel = Out_channel.create "cfg_edge.facts" in
   let func_edge_out_channel = Out_channel.create "func_edge.facts" in
-  let var_def_use_out_channel = Out_channel.create "var_def_use.facts" in
   let memory_access_out_channel = Out_channel.create "memory_access.facts" in
 
   (* Track the last two relevant instructions for Store operations *)
@@ -174,7 +166,6 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   Out_channel.close instruction_out_channel;
   Out_channel.close cfg_edge_out_channel;
   Out_channel.close func_edge_out_channel;
-  Out_channel.close var_def_use_out_channel;
   Out_channel.close memory_access_out_channel
 
 (* Define the command for generating Datalog facts *)
