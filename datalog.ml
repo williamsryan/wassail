@@ -18,17 +18,29 @@ let write_cfg_edge_fact out_channel func_name src dst annotation =
 
 (* Helper to write variable def-use facts *)
 let write_var_def_use_fact out_channel use_or_def func_name bb_name instr_index
-    var_index =
+    offset =
   Out_channel.output_string out_channel
     (Printf.sprintf "%s\t%s\t%s\t%d\t%ld\n" use_or_def func_name bb_name
-       instr_index var_index)
+       instr_index offset)
 
 (* Helper to write memory access facts *)
 let write_memory_access_fact out_channel kind func_name bb_name instr_name
-    memop_str =
+    memop_str effective_offset =
   Out_channel.output_string out_channel
-    (Printf.sprintf "%s\t%s\t%s\t%s\t%s\n" kind func_name bb_name instr_name
-       memop_str)
+    (Printf.sprintf "%s\t%s\t%s\t%s\t%s\t%ld\n" kind func_name bb_name
+       instr_name memop_str effective_offset)
+
+(* Function to calculate effective offset by combining base address and inline offset *)
+let calculate_effective_offset base_address (memop : Memoryop.t) : int32 =
+  let instr_offset = Int32.of_int_exn memop.offset in
+  let effective_offset = Int32.(base_address + instr_offset) in
+  Printf.printf
+    "Calculating effective offset:\n\
+    \  Base address: %ld\n\
+    \  Memop offset: %d\n\
+    \  Effective offset: %ld\n"
+    base_address memop.offset effective_offset;
+  effective_offset
 
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t)
@@ -43,6 +55,9 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   (* Iterate over functions and CFGs *)
   Int32Map.iteri cfgs ~f:(fun ~key:fid ~data:cfg ->
       let func_name = Printf.sprintf "func_%ld" fid in
+
+      (* Track potential base address for each memory access *)
+      let base_address = ref None in
 
       (* Generate function call facts *)
       IntMap.iteri cfg.edges ~f:(fun ~key:src ~data:edges ->
@@ -82,7 +97,19 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
 
                   (* Generate def-use facts based on instruction type *)
                   (match instr with
+                  | Const value -> (
+                      (* Only set base address if it is an i32, otherwise ignore *)
+                      match value with
+                      | I32 x ->
+                          Printf.printf "Setting base address from Const: %ld\n"
+                            x;
+                          base_address := Some x
+                      | _ -> base_address := None)
                   | LocalGet idx ->
+                      Printf.printf "Setting base address from LocalGet: %ld\n"
+                        idx;
+                      (* Set base address from LocalGet for subsequent memory instruction *)
+                      base_address := Some idx;
                       (* Use fact for Local_get *)
                       write_var_def_use_fact var_def_use_out_channel "use"
                         func_name bb_name instr_index idx
@@ -94,16 +121,43 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
 
                   (* Generate memory access facts based on instruction type *)
                   match instr with
-                  | Load memop ->
-                      (* Load memory access fact *)
-                      let memop_str = Memoryop.to_string memop in
-                      write_memory_access_fact memory_access_out_channel "load"
-                        func_name bb_name instr_name memop_str
-                  | Store memop ->
+                  | Load memop -> (
+                      match !base_address with
+                      | Some base ->
+                          let effective_offset =
+                            calculate_effective_offset base memop
+                          in
+                          let memop_str = Memoryop.to_string memop in
+                          Printf.printf
+                            "Load instruction:\n\
+                            \  Base address: %ld\n\
+                            \  Memop offset: %d\n\
+                            \  Effective offset: %ld\n"
+                            base memop.offset effective_offset;
+                          write_memory_access_fact memory_access_out_channel
+                            "load" func_name bb_name instr_name memop_str
+                            effective_offset;
+                          base_address := None
+                      | None -> ())
+                  | Store memop -> (
                       (* Store memory access fact *)
-                      let memop_str = Memoryop.to_string memop in
-                      write_memory_access_fact memory_access_out_channel "store"
-                        func_name bb_name instr_name memop_str
+                      match !base_address with
+                      | Some base ->
+                          let effective_offset =
+                            calculate_effective_offset base memop
+                          in
+                          let memop_str = Memoryop.to_string memop in
+                          Printf.printf
+                            "Store instruction:\n\
+                            \  Base address: %ld\n\
+                            \  Memop offset: %d\n\
+                            \  Effective offset: %ld\n"
+                            base memop.offset effective_offset;
+                          write_memory_access_fact memory_access_out_channel
+                            "store" func_name bb_name instr_name memop_str
+                            effective_offset;
+                          base_address := None
+                      | None -> ())
                   | _ -> ())
           | Control instr ->
               let instr_name = "control_instr" in
