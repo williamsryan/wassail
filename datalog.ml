@@ -18,10 +18,10 @@ let write_cfg_edge_fact out_channel func_name src dst annotation =
 
 (* Helper to write memory access facts *)
 let write_memory_access_fact out_channel kind func_name bb_name instr_name
-    memop_str effective_offset =
+    effective_offset =
   Out_channel.output_string out_channel
-    (Printf.sprintf "%s\t%s\t%s\t%s\t%s\t%ld\n" kind func_name bb_name
-       instr_name memop_str effective_offset)
+    (Printf.sprintf "%s\t%s\t%s\t%s\t%ld\n" kind func_name bb_name instr_name
+       effective_offset)
 
 (* Function to calculate effective offset by combining base address and inline offset *)
 let calculate_effective_offset base_address (memop : Memoryop.t) : int32 =
@@ -113,7 +113,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
-                          let memop_str = Memoryop.to_string memop in
+                          let _memop_str = Memoryop.to_string memop in
                           Printf.printf
                             "Load instruction:\n\
                             \  Base address: %ld\n\
@@ -121,8 +121,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                             \  Effective offset: %ld\n"
                             base memop.offset effective_offset;
                           write_memory_access_fact memory_access_out_channel
-                            "load" func_name bb_name instr_name memop_str
-                            effective_offset;
+                            "load" func_name bb_name instr_name effective_offset;
                           (* Pop the address from the stack after use *)
                           stack := List.tl_exn !stack
                       | _ ->
@@ -138,7 +137,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
-                          let memop_str = Memoryop.to_string memop in
+                          let _memop_str = Memoryop.to_string memop in
                           Printf.printf
                             "Store instruction:\n\
                             \  Base address: %ld\n\
@@ -147,7 +146,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                             \  Effective offset: %ld\n"
                             base value memop.offset effective_offset;
                           write_memory_access_fact memory_access_out_channel
-                            "store" func_name bb_name instr_name memop_str
+                            "store" func_name bb_name instr_name
                             effective_offset;
                           (* Pop the value and address from the stack after use *)
                           stack := List.drop !stack 2
