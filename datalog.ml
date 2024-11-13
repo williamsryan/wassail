@@ -35,6 +35,13 @@ let calculate_effective_offset base_address (memop : Memoryop.t) : int32 =
     base_address memop.offset effective_offset;
   effective_offset
 
+(* Retrieve function names and indices from wasm_module *)
+let get_function_index_map (wasm_module : Wasm_module.t) =
+  List.foldi wasm_module.funcs ~init:String.Map.empty ~f:(fun idx map func ->
+      match func.name with
+      | Some name -> Map.set map ~key:name ~data:(Int32.of_int_exn idx)
+      | None -> map)
+
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t)
     (cfgs : unit Cfg.t Int32Map.t) =
@@ -43,6 +50,9 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   let cfg_edge_out_channel = Out_channel.create "cfg_edge.facts" in
   let func_edge_out_channel = Out_channel.create "func_edge.facts" in
   let memory_access_out_channel = Out_channel.create "memory_access.facts" in
+
+  (* Map to store function name to index for resolving symbolic calls *)
+  let _func_name_to_index = get_function_index_map _wasm_module in
 
   (* Track the last two relevant instructions for Store operations *)
   let stack = ref [] in
@@ -57,21 +67,10 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   Int32Map.iteri cfgs ~f:(fun ~key:fid ~data:cfg ->
       let func_name = Printf.sprintf "func_%ld" fid in
 
-      (* Generate function call facts *)
+      (* Generate CFG edges without annotation for non-call edges *)
       IntMap.iteri cfg.edges ~f:(fun ~key:src ~data:edges ->
-          Cfg.Edge.Set.iter edges ~f:(fun (dst, edge_data) ->
-              match edge_data with
-              | Some _ ->
-                  (* Handle function calls here *)
-                  let called_func_name = Printf.sprintf "func_%d" dst in
-                  write_func_edge_fact func_edge_out_channel func_name
-                    called_func_name;
-                  (* Also write CFG edge with annotation *)
-                  write_cfg_edge_fact cfg_edge_out_channel func_name src dst
-                    "call"
-              | None ->
-                  (* Write CFG edge without annotation *)
-                  write_cfg_edge_fact cfg_edge_out_channel func_name src dst ""));
+          Cfg.Edge.Set.iter edges ~f:(fun (dst, _) ->
+              write_cfg_edge_fact cfg_edge_out_channel func_name src dst ""));
 
       (* Iterate over basic blocks and their content *)
       IntMap.iteri cfg.basic_blocks ~f:(fun ~key:bb_id ~data:bb ->
@@ -157,11 +156,28 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                             "Insufficient values on stack for Store instruction.\n"
                       )
                   | _ -> ())
-          | Control instr ->
+          | Control instr_labelled -> (
+              (* Process a single control instruction, specifically handling Call *)
               let instr_name = "control_instr" in
-              let instr_str = Instr.control_to_short_string instr.instr in
+              let instr_str =
+                Instr.control_to_short_string instr_labelled.instr
+              in
               write_instr_fact instruction_out_channel func_name bb_name
-                instr_name instr_str));
+                instr_name instr_str;
+
+              let instr = instr_labelled.instr in
+
+              (* Handling Call instructions within control flow *)
+              match instr with
+              | Call (_, _, target_func_id) ->
+                  let target_func_name =
+                    Printf.sprintf "func_%ld" target_func_id
+                  in
+                  Printf.printf "Detected call from %s to %s\n" func_name
+                    target_func_name;
+                  write_func_edge_fact func_edge_out_channel func_name
+                    target_func_name
+              | _ -> ())));
 
   Out_channel.close instruction_out_channel;
   Out_channel.close cfg_edge_out_channel;
