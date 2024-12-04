@@ -23,6 +23,11 @@ let write_memory_access_fact out_channel kind func_name bb_name instr_name
     (Printf.sprintf "%s\t%s\t%s\t%s\t%ld\n" kind func_name bb_name instr_name
        effective_offset)
 
+(* Helper to write constant facts *)
+let write_constant_fact out_channel instr_name value =
+  Out_channel.output_string out_channel
+    (Printf.sprintf "%s\t%ld\n" instr_name value)
+
 (* Function to calculate effective offset by combining base address and inline offset *)
 let calculate_effective_offset base_address (memop : Memoryop.t) : int32 =
   let instr_offset = Int32.of_int_exn memop.offset in
@@ -50,6 +55,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
   let cfg_edge_out_channel = Out_channel.create "cfg_edge.facts" in
   let func_edge_out_channel = Out_channel.create "func_edge.facts" in
   let memory_access_out_channel = Out_channel.create "memory_access.facts" in
+  let constant_out_channel = Out_channel.create "constant.facts" in
 
   (* Map to store function name to index for resolving symbolic calls *)
   let _func_name_to_index = get_function_index_map _wasm_module in
@@ -98,7 +104,9 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                   | Const (I32 x) ->
                       Printf.printf "Pushing to stack: %ld\n" x;
                       stack := x :: !stack;
-                      print_stack ()
+                      print_stack ();
+                      (* Write constant facts for i32.const *)
+                      write_constant_fact constant_out_channel instr_name x
                   | _ -> ());
 
                   (* Generate memory access facts based on instruction type *)
