@@ -143,7 +143,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                         (Instr.data_to_string instr);
                       print_stack ();
                       match !stack with
-                      | base :: value :: _ ->
+                      | value :: base :: _ ->
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
