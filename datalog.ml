@@ -90,7 +90,9 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
           match bb.content with
           | Data instrs ->
               List.iteri instrs ~f:(fun instr_index instr_labelled ->
-                  let instr_name = Printf.sprintf "instr_%d" instr_index in
+                  let instr_name =
+                    Printf.sprintf "instr_%ld_%d" fid instr_index
+                  in
                   let instr_str =
                     Instr.to_mnemonic (Instr.Data instr_labelled)
                   in
