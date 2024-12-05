@@ -24,9 +24,9 @@ let write_memory_access_fact out_channel kind func_name bb_name instr_name
        effective_offset)
 
 (* Helper to write constant facts *)
-let write_constant_fact out_channel instr_name value =
+let write_constant_fact out_channel instr_name value purpose =
   Out_channel.output_string out_channel
-    (Printf.sprintf "%s\t%ld\n" instr_name value)
+    (Printf.sprintf "%s\t%ld\t%s\n" instr_name value purpose)
 
 (* Function to calculate effective offset by combining base address and inline offset *)
 let calculate_effective_offset base_address (memop : Memoryop.t) : int32 =
@@ -102,17 +102,20 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                   let instr = instr_labelled.instr in
 
                   (* Handle stack updates for i32.const instructions *)
-                  (match instr with
+                  match instr with
                   | Const (I32 x) ->
                       Printf.printf "Pushing to stack: %ld\n" x;
                       stack := x :: !stack;
                       print_stack ();
-                      (* Write constant facts for i32.const *)
+                      (* TODO: determine the purpose of the constant *)
+                      let purpose =
+                        match instr_labelled.instr with
+                        | Load _ | Store _ -> "memory"
+                        | _ -> "computation"
+                      in
                       write_constant_fact constant_out_channel instr_name x
-                  | _ -> ());
-
+                        purpose
                   (* Generate memory access facts based on instruction type *)
-                  match instr with
                   | Load memop -> (
                       Printf.printf
                         "\n--- Load Instruction Encountered (%s) ---\n"
