@@ -47,6 +47,16 @@ let get_function_index_map (wasm_module : Wasm_module.t) =
       | Some name -> Map.set map ~key:name ~data:(Int32.of_int_exn idx)
       | None -> map)
 
+(* Helper to classify constant based on context *)
+let classify_instruction instr =
+  match instr with
+  | Instr.Binary binop -> (
+      match binop.op with
+      | Add | Sub | Mul | Div | And | Or | Xor -> "computation"
+      | _ -> "unknown")
+  | Instr.Load _ | Instr.Store _ -> "memory_operation"
+  | _ -> "unknown"
+
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t)
     (cfgs : unit Cfg.t Int32Map.t) =
@@ -100,6 +110,7 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                     instr_name instr_str;
 
                   let instr = instr_labelled.instr in
+                  let next_instr = List.nth instrs (instr_index + 1) in
 
                   (* Handle stack updates for i32.const instructions *)
                   match instr with
@@ -107,14 +118,18 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                       Printf.printf "Pushing to stack: %ld\n" x;
                       stack := x :: !stack;
                       print_stack ();
-                      (* TODO: determine the purpose of the constant *)
-                      let purpose =
-                        match instr_labelled.instr with
-                        | Load _ | Store _ -> "memory"
-                        | _ -> "computation"
+                      (* Classify the constant based on next_instr *)
+                      let const_purpose =
+                        match next_instr with
+                        | Some next -> classify_instruction next.instr
+                        | None -> "unknown"
                       in
+                      Printf.printf "Classifying constant %ld as %s\n" x
+                        const_purpose;
+
+                      (* Write constant facts *)
                       write_constant_fact constant_out_channel instr_name x
-                        purpose
+                        const_purpose
                   (* Generate memory access facts based on instruction type *)
                   | Load memop -> (
                       Printf.printf
