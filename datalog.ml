@@ -59,13 +59,35 @@ let classify_instruction instr =
 
 (* Function to generate Datalog facts from Wasm module and CFGs *)
 let generate_datalog_facts (_wasm_module : Wasm_module.t)
-    (cfgs : unit Cfg.t Int32Map.t) =
+    (cfgs : unit Cfg.t Int32Map.t) (output_dir : string) =
+  (* Safely create the output directory and any missing parent directories *)
+  let create_directory dir =
+    try Core_unix.mkdir_p dir
+    with Core_unix.Unix_error (err, _, _) ->
+      Printf.eprintf "Error creating directory '%s': %s\n" dir
+        (Core_unix.Error.message err);
+      exit 1
+  in
+
+  (* Ensure the output directory exists *)
+  create_directory output_dir;
+
   (* Open channels for separate fact files *)
-  let instruction_out_channel = Out_channel.create "instruction.facts" in
-  let cfg_edge_out_channel = Out_channel.create "cfg_edge.facts" in
-  let func_edge_out_channel = Out_channel.create "func_edge.facts" in
-  let memory_access_out_channel = Out_channel.create "memory_access.facts" in
-  let constant_out_channel = Out_channel.create "constant.facts" in
+  let instruction_out_channel =
+    Out_channel.create (Filename.concat output_dir "instruction.facts")
+  in
+  let cfg_edge_out_channel =
+    Out_channel.create (Filename.concat output_dir "cfg_edge.facts")
+  in
+  let func_edge_out_channel =
+    Out_channel.create (Filename.concat output_dir "func_edge.facts")
+  in
+  let memory_access_out_channel =
+    Out_channel.create (Filename.concat output_dir "memory_access.facts")
+  in
+  let constant_out_channel =
+    Out_channel.create (Filename.concat output_dir "constant.facts")
+  in
 
   (* Map to store function name to index for resolving symbolic calls *)
   let _func_name_to_index = get_function_index_map _wasm_module in
@@ -215,15 +237,22 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
 let facts =
   Command.basic ~summary:"Generate Datalog facts from Wasm module"
     (let open Command.Let_syntax in
-     let%map_open wasm_file = anon ("wasm-file" %: string) in
+     let%map_open wasm_file = anon ("wasm-file" %: string)
+     and output_dir =
+       flag "output-dir" (optional string)
+         ~doc:
+           "DIR Directory to store the generated fact files (default: current \
+            directory)"
+     in
      fun () ->
+       let output_dir = Option.value output_dir ~default:"." in
        let start_time = Time_float.now () in
        let wasm_module = Wasm_module.of_file wasm_file in
        (* Generate CFGs for all functions in the module *)
        let cfgs = Cfg_builder.build_all wasm_module in
        (* Generate the Datalog facts *)
-       generate_datalog_facts wasm_module cfgs;
+       generate_datalog_facts wasm_module cfgs output_dir;
        let end_time = Time_float.now () in
-       Printf.printf "Datalog facts written to '.'.\n";
+       Printf.printf "Datalog facts written to '%s'.\n" output_dir;
        Printf.printf "Time_float for 'Datalog facts generation': %s\n%!"
          (Time_float.Span.to_string (Time_float.diff end_time start_time)))
