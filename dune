@@ -9,9 +9,9 @@
  (preprocess
   (pps ppx_jane ppx_compare)))
 
-(executable
+(library
  (name jsbridge)
- (modes js)
+;  (modes js)
  (modules Jsbridge)
  (libraries wassail js_of_ocaml js_of_ocaml-ppx)
  (preprocess
