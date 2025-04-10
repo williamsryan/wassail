@@ -18,10 +18,10 @@ let write_cfg_edge_fact out_channel func_name src dst annotation =
 
 (* Helper to write memory access facts *)
 let write_memory_access_fact out_channel kind func_name bb_name instr_name
-    effective_offset =
+    effective_offset instr_location =
   Out_channel.output_string out_channel
-    (Printf.sprintf "%s\t%s\t%s\t%s\t%ld\n" kind func_name bb_name instr_name
-       effective_offset)
+    (Printf.sprintf "%s\t%s\t%s\t%s\t%ld\t%s\n" kind func_name bb_name
+       instr_name effective_offset instr_location)
 
 (* Helper to write constant facts *)
 let write_constant_fact out_channel instr_name value purpose =
@@ -39,6 +39,12 @@ let calculate_effective_offset base_address (memop : Memoryop.t) : int32 =
     \  Effective offset: %ld\n"
     base_address memop.offset effective_offset;
   effective_offset
+
+(* Helper to format instruction location *)
+let format_instr_location (instr_labelled : ('a, 'b) Instr.T.labelled) =
+  let label = instr_labelled.Instr.T.label in
+  let line_number = instr_labelled.Instr.T.line_number in
+  Printf.sprintf "%s:%d" (Instr.Label.to_string label) line_number
 
 (* Retrieve function names and indices from wasm_module *)
 let get_function_index_map (wasm_module : Wasm_module.t) =
@@ -163,15 +169,20 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
+                          let instr_location =
+                            format_instr_location instr_labelled
+                          in
                           let _memop_str = Memoryop.to_string memop in
                           Printf.printf
                             "Load instruction:\n\
                             \  Base address: %ld\n\
                             \  Memop offset: %d\n\
-                            \  Effective offset: %ld\n"
-                            base memop.offset effective_offset;
+                            \  Effective offset: %ld\n\
+                            \  Location: %s\n"
+                            base memop.offset effective_offset instr_location;
                           write_memory_access_fact memory_access_out_channel
-                            "load" func_name bb_name instr_name effective_offset;
+                            "load" func_name bb_name instr_name effective_offset
+                            instr_location;
                           (* Pop the address from the stack after use *)
                           stack := List.tl_exn !stack
                       | _ ->
@@ -187,17 +198,22 @@ let generate_datalog_facts (_wasm_module : Wasm_module.t)
                           let effective_offset =
                             calculate_effective_offset base memop
                           in
+                          let instr_location =
+                            format_instr_location instr_labelled
+                          in
                           let _memop_str = Memoryop.to_string memop in
                           Printf.printf
                             "Store instruction:\n\
                             \  Base address: %ld\n\
                             \  Value: %ld\n\
                             \  Memop offset: %d\n\
-                            \  Effective offset: %ld\n"
-                            base value memop.offset effective_offset;
+                            \  Effective offset: %ld\n\
+                            \  Location: %s\n"
+                            base value memop.offset effective_offset
+                            instr_location;
                           write_memory_access_fact memory_access_out_channel
                             "store" func_name bb_name instr_name
-                            effective_offset;
+                            effective_offset instr_location;
                           (* Pop the value and address from the stack after use *)
                           stack := List.drop !stack 2
                       | _ ->
