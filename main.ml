@@ -1,6 +1,6 @@
 open Core
 
-let report_time (msg : string) (t0 : Time_float.t) (t1 : Time_float.t) : unit =
+let _report_time (msg : string) (t0 : Time_float.t) (t1 : Time_float.t) : unit =
   Printf.printf "Time_float for '%s': %s\n%!" msg
     (Time_float.Span.to_string (Time_float.diff t1 t0))
 
