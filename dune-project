@@ -1,3 +1,3 @@
-(lang dune 2.7)
-(allow_approximate_merlin)
+(lang dune 3.16)
+; (allow_approximate_merlin)
 (name "wassail")
