@@ -1,7 +1,11 @@
 open Core
 
 let get_static_memory_accesses (wasm_file : string) : (int * int) list =
-  let conn = new Postgresql.connection ~conninfo:"dbname=weisswurst" () in
+  let conn =
+    new Postgresql.connection
+      ~host:"localhost" ~port:"5432" ~dbname:"weisswurst_db" ~user:"weisswurst"
+      ~password:"Pass4Weiss!" ()
+  in
   let sha256 = Md5.to_hex (Md5.digest_string wasm_file) in
   let res =
     conn#exec ~expect:[ Postgresql.Tuples_ok ] ~params:[| sha256 |]
