@@ -51,4 +51,6 @@ let () =
          ("count-in-slice", Slicing_evaluation.count_in_slice)
          (* New Datalog facts generation command *);
          ("datalog-facts", Datalog.facts);
+         (* Segmentation passes *)
+         ("rewrite-static", Transformation.rewrite_static);
        ])

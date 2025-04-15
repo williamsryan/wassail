@@ -2,16 +2,30 @@
  (package wassail)
  (name main)
  (public_name wassail)
- (modules Main Datalog Slicing Slicing_evaluation Utils Cfg Callgraph Generation Analysis)
+ (modules
+  Main
+  Datalog
+  Transformation
+  Transformation_logic
+  Db_interface
+  Slicing
+  Slicing_evaluation
+  Utils
+  Cfg
+  Callgraph
+  Generation
+  Analysis)
  (libraries wassail core core_unix core_unix.command_unix wasm)
  ;; (link_flags :standard -cclib -static) ;; uncomment to enable static executable
- (preprocess (pps ppx_jane ppx_compare)))
+ (preprocess
+  (pps ppx_jane ppx_compare)))
 
 (executable
-  (name jsbridge)
-  (modes js)
-  (modules Jsbridge)
-  (libraries wassail js_of_ocaml js_of_ocaml-ppx)
-  (preprocess (pps ppx_jane ppx_compare js_of_ocaml-ppx)))
+ (name jsbridge)
+ (modes js)
+ (modules Jsbridge)
+ (libraries wassail js_of_ocaml js_of_ocaml-ppx)
+ (preprocess
+  (pps ppx_jane ppx_compare js_of_ocaml-ppx)))
 
 (include_subdirs unqualified)
