@@ -1,5 +1,4 @@
 open Core
-open Wassail
 
 let rewrite_static =
   Command.basic

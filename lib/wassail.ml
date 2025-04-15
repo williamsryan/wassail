@@ -30,3 +30,4 @@ module Control_deps = Control_deps
 module Instruction_counter = Instruction_counter
 module Sizes = Sizes
 module Memoryop = Memoryop
+module Data_segment = Data_segment
