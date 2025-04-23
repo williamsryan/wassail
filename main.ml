@@ -53,4 +53,6 @@ let () =
          ("datalog-facts", Datalog.facts);
          (* Segmentation passes *)
          ("rewrite-static", Transformation.rewrite_static);
+         (* Bounds checking functionality *)
+         (* ("insert-checks", Ub_check.transform_module); *)
        ])
